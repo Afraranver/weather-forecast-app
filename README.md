@@ -12,7 +12,7 @@ A modern, production-ready Android weather forecast application showcasing indus
 <p align="center">
   <img src="screenshots/weather_forecast_main.jpeg" width="250" />
   <img src="screenshots/weather_forecast_list.jpeg" width="250" />
-  <img src="screenshots/dark_mode.png" width="250" />
+  <img src="screenshots/weather_forecast_dark_mode.jpeg" width="250" />
 </p>
 
 > **Note**: Add actual screenshots to `/screenshots` folder after running the app
