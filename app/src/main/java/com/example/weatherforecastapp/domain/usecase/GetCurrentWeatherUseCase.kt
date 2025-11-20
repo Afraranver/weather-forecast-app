@@ -5,6 +5,8 @@ import com.example.weatherforecastapp.domain.repository.WeatherRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import com.example.weatherforecastapp.util.Resource
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
 
 class GetCurrentWeatherUseCase @Inject constructor(
     private val repository: WeatherRepository
@@ -13,7 +15,9 @@ class GetCurrentWeatherUseCase @Inject constructor(
         lat: Double,
         lon: Double,
         forceRefresh: Boolean = false
-    ): Flow<Resource<Weather>> {
+    ): Flow<Result<Weather>> {
         return repository.getCurrentWeather(lat, lon, forceRefresh)
+            .map { weather -> Result.success(weather) }
+            .catch { e -> emit(Result.failure(e)) }
     }
 }

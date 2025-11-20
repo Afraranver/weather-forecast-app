@@ -1,5 +1,6 @@
 package com.example.weatherforecastapp.data.repository
 
+import com.example.weatherforecastapp.BuildConfig
 import com.example.weatherforecastapp.data.local.WeatherDao
 import com.example.weatherforecastapp.data.local.entity.WeatherEntity
 import com.example.weatherforecastapp.data.remote.WeatherApi
@@ -11,10 +12,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import timber.log.Timber
 import javax.inject.Inject
-
-import com.example.weatherforecastapp.BuildConfig
 import com.example.weatherforecastapp.domain.model.Weather
-import com.example.weatherforecastapp.util.Resource
+import com.example.weatherforecastapp.util.WeatherException
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.firstOrNull
 import retrofit2.HttpException
 import java.io.IOException
 
@@ -28,118 +29,64 @@ class WeatherRepositoryImpl @Inject constructor(
         lat: Double,
         lon: Double,
         forceRefresh: Boolean
-    ): Flow<Resource<Weather>> = flow {
-        emit(Resource.Loading())
-
+    ): Flow<Weather> = flow {
         val cacheKey = "${lat}_$lon"
 
-        // Emit cached data first (if not forcing refresh)
+        // Try cache first if not forcing refresh
         if (!forceRefresh) {
-            dao.getWeather(cacheKey).collect { cachedWeather ->
-                cachedWeather?.let {
-                    // Check if cache is recent (less than 10 minutes old)
-                    val cacheAge = System.currentTimeMillis() - it.lastUpdated
-                    if (cacheAge < CACHE_TIMEOUT) {
-                        Timber.d("Emitting cached weather data")
-                        emit(Resource.Success(it.toDomainModel()))
-                        return@collect
-                    }
+            val cached = dao.getWeather(cacheKey).firstOrNull()
+            cached?.let {
+                val cacheAge = System.currentTimeMillis() - it.lastUpdated
+                if (cacheAge < CACHE_TIMEOUT) {
+                    Timber.d("Returning cached weather")
+                    emit(it.toDomainModel())
+                    return@flow // Exit early with cache
                 }
             }
         }
 
-        // Fetch fresh data from API
-        try {
-            Timber.d("Fetching weather from API for lat: $lat, lon: $lon")
-            val response = api.getCurrentWeather(
-                lat = lat,
-                lon = lon,
-                apiKey = BuildConfig.WEATHER_API_KEY
-            )
+        // Fetch from network
+        Timber.d("Fetching from network")
+        val response = api.getCurrentWeather(lat, lon, apiKey = BuildConfig.WEATHER_API_KEY)
+        val weather = response.toDomainModel()
 
-            val weather = response.toDomainModel()
-
-            // Cache the result
-            dao.insertWeather(WeatherEntity.fromDomainModel(weather, lat, lon))
-
-            Timber.d("Successfully fetched and cached weather data")
-            emit(Resource.Success(weather))
-
-        } catch (e: HttpException) {
-            Timber.e(e, "HTTP error fetching weather")
-            emit(Resource.Error(
-                message = "Server error: ${e.message()}",
-                data = null
-            ))
-        } catch (e: IOException) {
-            Timber.e(e, "Network error fetching weather")
-            emit(Resource.Error(
-                message = "Network error. Please check your connection.",
-                data = null
-            ))
-        } catch (e: Exception) {
-            Timber.e(e, "Unexpected error fetching weather")
-            emit(Resource.Error(
-                message = "An unexpected error occurred: ${e.message}",
-                data = null
-            ))
-        }
+        // Cache and emit
+        dao.insertWeather(WeatherEntity.fromDomainModel(weather, lat, lon))
+        emit(weather)
+    }.catch { e ->
+        Timber.e(e, "Error fetching weather")
+        throw WeatherException.fromThrowable(e)
     }
 
     override fun getForecast(
         lat: Double,
         lon: Double,
         forceRefresh: Boolean
-    ): Flow<Resource<List<Forecast>>> = flow {
-        emit(Resource.Loading())
-
-        try {
-            Timber.d("Fetching forecast from API for lat: $lat, lon: $lon")
-            val response = api.getForecast(
-                lat = lat,
-                lon = lon,
-                apiKey = BuildConfig.WEATHER_API_KEY
-            )
-
-            val forecasts = response.toDomainModel()
-
-            Timber.d("Successfully fetched ${forecasts.size} forecast items")
-            emit(Resource.Success(forecasts))
-
-        } catch (e: HttpException) {
-            Timber.e(e, "HTTP error fetching forecast")
-            emit(Resource.Error(
-                message = "Server error: ${e.message()}",
-                data = null
-            ))
-        } catch (e: IOException) {
-            Timber.e(e, "Network error fetching forecast")
-            emit(Resource.Error(
-                message = "Network error. Please check your connection.",
-                data = null
-            ))
-        } catch (e: Exception) {
-            Timber.e(e, "Unexpected error fetching forecast")
-            emit(Resource.Error(
-                message = "An unexpected error occurred: ${e.message}",
-                data = null
-            ))
+    ): Flow<List<Forecast>> = flow {
+        Timber.d("Fetching forecast from API")
+        val response = api.getForecast(lat, lon, apiKey = BuildConfig.WEATHER_API_KEY)
+        emit(response.toDomainModel())
+    }.catch { e ->
+        Timber.e(e, "Error fetching forecast")
+        throw when (e) {
+            is IOException -> WeatherException.NetworkError(e)
+            is HttpException -> WeatherException.ServerError(e.code(), e.message())
+            else -> WeatherException.UnknownError(e)
         }
     }
 
     override suspend fun refreshWeather(lat: Double, lon: Double) {
         try {
-            val response = api.getCurrentWeather(
-                lat = lat,
-                lon = lon,
-                apiKey = BuildConfig.WEATHER_API_KEY
-            )
+            val response = api.getCurrentWeather(lat, lon, apiKey = BuildConfig.WEATHER_API_KEY)
             val weather = response.toDomainModel()
             dao.insertWeather(WeatherEntity.fromDomainModel(weather, lat, lon))
             Timber.d("Weather refreshed successfully")
+        } catch (e: IOException) {
+            throw WeatherException.NetworkError(e)
+        } catch (e: HttpException) {
+            throw WeatherException.ServerError(e.code(), e.message())
         } catch (e: Exception) {
-            Timber.e(e, "Error refreshing weather")
-            throw e
+            throw WeatherException.UnknownError(e)
         }
     }
 
@@ -178,6 +125,6 @@ class WeatherRepositoryImpl @Inject constructor(
     }
 
     companion object {
-        private const val CACHE_TIMEOUT = 10 * 60 * 1000L // 10 minutes
+        private const val CACHE_TIMEOUT = 10 * 60 * 1000L
     }
 }

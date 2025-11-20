@@ -6,7 +6,12 @@ import javax.inject.Inject
 class RefreshWeatherUseCase @Inject constructor(
     private val repository: WeatherRepository
 ) {
-    suspend operator fun invoke(lat: Double, lon: Double) {
-        repository.refreshWeather(lat, lon)
+    suspend operator fun invoke(lat: Double, lon: Double): Result<Unit> {
+        return try {
+            repository.refreshWeather(lat, lon)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

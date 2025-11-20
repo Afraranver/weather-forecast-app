@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -34,30 +35,24 @@ class ForecastViewModel @Inject constructor(
         loadForecast()
     }
 
-    fun loadForecast(forceRefresh: Boolean = false) {
+    fun loadForecast(forceRefresh: Boolean = false){
         viewModelScope.launch {
             getForecastUseCase(currentLat, currentLon, forceRefresh)
-                .collect { result ->
-                    when (result) {
-                        is Resource.Loading -> {
-                            _state.value = ForecastState.Loading
-                            Timber.d("Loading forecast data...")
+                .collectLatest { result ->
+                    result.fold(
+                        onSuccess = { forecasts ->
+                            _state.value = ForecastState.Success(forecasts)
+                            Timber.d("Forecast loaded successfully: ${forecasts.size} items")
+                        },
+                        onFailure = { error ->
+                            val message = error.message ?: "Something went wrong!!"
+                            _state.value = ForecastState.Error(message)
+                            _snackbarMessage.emit(message)
+                            Timber.e(error, "Error loading forecast")
                         }
-                        is Resource.Success -> {
-                            result.data?.let { forecasts ->
-                                _state.value = ForecastState.Success(forecasts)
-                                Timber.d("Forecast loaded successfully: ${forecasts.size} items")
-                            }
-                        }
-                        is Resource.Error -> {
-                            _state.value = ForecastState.Error(
-                                result.message ?: "An unexpected error occurred"
-                            )
-                            Timber.e("Error loading forecast: ${result.message}")
-                            _snackbarMessage.emit(result.message ?: "Error loading forecast")
-                        }
-                    }
-                }
+                    )
+
+            }
         }
     }
 

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -41,27 +42,22 @@ class WeatherViewModel @Inject constructor(
 
     fun loadWeather(forceRefresh: Boolean = false) {
         viewModelScope.launch {
+            _state.value = WeatherState.Loading
+
             getCurrentWeatherUseCase(currentLat, currentLon, forceRefresh)
-                .collect { result ->
-                    when (result) {
-                        is Resource.Loading -> {
-                            _state.value = WeatherState.Loading
-                            Timber.d("Loading weather data...")
+                .collectLatest { result ->
+                    result.fold(
+                        onSuccess = { weather ->
+                            _state.value = WeatherState.Success(weather)
+                            Timber.d("Weather loaded: ${weather.cityName}")
+                        },
+                        onFailure = { error ->
+                            val message = error.message ?: "Something went wrong"
+                            _state.value = WeatherState.Error(message)
+                            _snackbarMessage.emit(message)
+                            Timber.e(error, "Error loading weather")
                         }
-                        is Resource.Success -> {
-                            result.data?.let { weather ->
-                                _state.value = WeatherState.Success(weather)
-                                Timber.d("Weather loaded successfully: ${weather.cityName}")
-                            }
-                        }
-                        is Resource.Error -> {
-                            _state.value = WeatherState.Error(
-                                result.message ?: "An unexpected error occurred"
-                            )
-                            Timber.e("Error loading weather: ${result.message}")
-                            _snackbarMessage.emit(result.message ?: "Error loading weather")
-                        }
-                    }
+                    )
                 }
         }
     }
@@ -71,11 +67,15 @@ class WeatherViewModel @Inject constructor(
             _isRefreshing.value = true
             try {
                 refreshWeatherUseCase(currentLat, currentLon)
-                loadWeather(forceRefresh = true)
-                _snackbarMessage.emit("Weather updated")
-            } catch (e: Exception) {
-                Timber.e(e, "Error refreshing weather")
-                _snackbarMessage.emit("Failed to refresh weather")
+                    .onSuccess {
+                        loadWeather(forceRefresh = true)
+                        _snackbarMessage.emit("Weather updated")
+                    }
+                    .onFailure { error ->
+                        val message = error.message ?: "Something went wrong"
+                        _snackbarMessage.emit(message)
+                        Timber.e(error, "Error refreshing weather")
+                    }
             } finally {
                 _isRefreshing.value = false
             }

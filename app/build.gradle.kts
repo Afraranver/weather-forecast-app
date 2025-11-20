@@ -34,7 +34,7 @@ android {
             useSupportLibrary = true
         }
 
-        val apiKey = secrets.getProperty("WEATHER_API_KEY") ?: "3ab19d9c02ccb4e3ba80f0114f405242"
+        val apiKey = secrets.getProperty("WEATHER_API_KEY")
         buildConfigField("String", "WEATHER_API_KEY", "\"$apiKey\"")
         buildConfigField("String", "BASE_URL", "\"https://api.openweathermap.org/data/2.5/\"")
     }
@@ -147,6 +147,6 @@ dependencies {
     implementation(libs.androidx.hilt.work)
 
     implementation(libs.compose.material.icons)
-
+    implementation(libs.androidx.compose.material.icons.extended)
 
 }

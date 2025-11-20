@@ -15,15 +15,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.twotone.Air
+import androidx.compose.material.icons.twotone.Cloud
+import androidx.compose.material.icons.twotone.Compress
+import androidx.compose.material.icons.twotone.NightsStay
+import androidx.compose.material.icons.twotone.Thermostat
+import androidx.compose.material.icons.twotone.WaterDrop
+import androidx.compose.material.icons.twotone.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -266,14 +267,14 @@ private fun WeatherContent(
             ) {
                 WeatherDetailCard(
                     modifier = Modifier.weight(1f),
-                    icon = Icons.Default.Favorite,
+                    icon = Icons.TwoTone.Thermostat,
                     label = "Min/Max",
                     value = "${weather.minTemp.toInt()}° / ${weather.maxTemp.toInt()}°"
                 )
 
                 WeatherDetailCard(
                     modifier = Modifier.weight(1f),
-                    icon = Icons.Default.ArrowDropDown,
+                    icon = Icons.TwoTone.WaterDrop,
                     label = "Humidity",
                     value = "${weather.humidity}%"
                 )
@@ -287,14 +288,14 @@ private fun WeatherContent(
             ) {
                 WeatherDetailCard(
                     modifier = Modifier.weight(1f),
-                    icon = Icons.Default.Check,
+                    icon = Icons.TwoTone.Air,
                     label = "Wind Speed",
                     value = "${weather.windSpeed} m/s"
                 )
 
                 WeatherDetailCard(
                     modifier = Modifier.weight(1f),
-                    icon = Icons.Default.Refresh,
+                    icon = Icons.TwoTone.Compress,
                     label = "Pressure",
                     value = "${weather.pressure} hPa"
                 )
@@ -308,14 +309,14 @@ private fun WeatherContent(
             ) {
                 WeatherDetailCard(
                     modifier = Modifier.weight(1f),
-                    icon = Icons.Default.Create,
+                    icon = Icons.TwoTone.Cloud,
                     label = "Cloudiness",
                     value = "${weather.cloudiness}%"
                 )
 
                 WeatherDetailCard(
                     modifier = Modifier.weight(1f),
-                    icon = Icons.Default.Info,
+                    icon = Icons.TwoTone.WbSunny,
                     label = "Sunrise",
                     value = formatTime(weather.sunrise)
                 )
@@ -325,7 +326,7 @@ private fun WeatherContent(
 
             WeatherDetailCard(
                 modifier = Modifier.fillMaxWidth(),
-                icon = Icons.Default.Delete,
+                icon = Icons.TwoTone.NightsStay,
                 label = "Sunset",
                 value = formatTime(weather.sunset)
             )

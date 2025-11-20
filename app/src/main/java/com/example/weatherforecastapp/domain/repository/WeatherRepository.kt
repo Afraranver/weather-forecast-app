@@ -10,13 +10,13 @@ interface WeatherRepository {
         lat: Double,
         lon: Double,
         forceRefresh: Boolean = false
-    ): Flow<Resource<Weather>>
+    ): Flow<Weather>
 
     fun getForecast(
         lat: Double,
         lon: Double,
         forceRefresh: Boolean = false
-    ): Flow<Resource<List<Forecast>>>
+    ): Flow<List<Forecast>>
 
     suspend fun refreshWeather(lat: Double, lon: Double)
 }
