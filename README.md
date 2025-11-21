@@ -15,8 +15,6 @@ A modern, production-ready Android weather forecast application showcasing indus
   <img src="screenshots/weather_forecast_dark_mode.jpeg" width="250" />
 </p>
 
-> **Note**: Add actual screenshots to `/screenshots` folder after running the app
-
 ## ✨ Features
 
 ### Core Features
